@@ -21,7 +21,7 @@ The data for this project come from this source: http://web.archive.org/web/2016
 
 # Goal
 
-The goal of this project is to predict the manner in which the people did the exercise. This is represented by the "classe" variable in the training set. We use other variables from the data set to predict the classe.
+**The goal of this project is to predict the manner in which the people did the exercise.** This is represented by the "classe" variable in the training set. We use other variables from the data set to predict the classe.
 
 # Load Required Packages and Set Seed
 
