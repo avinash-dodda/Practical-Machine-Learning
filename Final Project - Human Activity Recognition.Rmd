@@ -1,0 +1,184 @@
+---
+title: "Human Activity Recognition"
+author: "Avinash Dodda - Aug 2019"
+output: 
+        html_document:
+                number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Data set).
+
+# Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har.
+
+# Goal
+
+The goal of this project is to predict the manner in which the people did the exercise. This is represented by the "classe" variable in the training set. We use other variables from the data set to predict the classe.
+
+# Load Required Packages and Set Seed
+
+
+```{r message=FALSE, warning=FALSE}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(rattle)
+library(RColorBrewer)
+set.seed(100)
+```
+
+# Read Data
+
+
+```{r}
+trainurl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testurl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+train <- read.csv(trainurl)
+test <- read.csv(testurl)
+
+```
+
+Check dimensions of train data set
+```{r}
+dim(train)
+```
+
+Check dimensions of test data set
+```{r}
+dim(test)
+```
+
+# Cleaning Data
+We first look at the summary of train data
+```{r}
+str(train)
+```
+
+
+From the above summary of the train data we see that there are **NA, #DIV/0! error** and empty **" "** factor. We correct these below.
+
+## Clean Train Data
+
+First we remove columns with NA and columns with id, time stamp and user name.
+```{r}
+#change #Div/0! and " " to NA
+train <- read.csv(trainurl,na.strings=c("NA","#DIV/0!",""))
+
+#Remove columns with NA
+train_1 <- train[,(colSums(is.na(train)) == 0)] 
+
+#remove unnecessary colums
+
+train_2 <- train_1[,!(grepl("^X|time stamp|user_name", names(train_1)))]
+
+```
+
+Now we exclude variables with **Near Zero Variance**
+```{r}
+NZV <- nearZeroVar(train_2, saveMetrics = TRUE)
+train_final <- train_2[,!NZV$nzv]
+dim(train_final)
+```
+
+The cleaned training data contains 54 variables. Now we make the above changes to test data
+
+## Clean Test Data
+
+```{r}
+col <- colnames(train_final[,colnames(train_final) != "classe"]) 
+test_final <- test[,col]
+dim(test_final)
+```
+
+The test data contains 53 variables since the **classe** variable is not included in the test set.
+
+# Split Train Data for Cross Validation
+
+We split train data set and uses 70% train data for training and 30% train data for cross validation.
+
+```{r}
+inTrain <- createDataPartition(train_final$classe, p = 0.70, list = FALSE)
+validation <- train_final[-inTrain, ]
+train_final <- train_final[inTrain, ]
+```
+
+```{r}
+dim(train_final)
+dim(validation)
+```
+
+The final train data has 13,737 observations and validation set has 5,885 observations
+
+# Prediction Modelling
+
+## Decision Tree Modelling
+
+We first use **Decision Tree** algorithm for prediction and show the model tree. 
+```{r}
+dt <- rpart(classe ~ ., data = train_final, method = "class")
+prp(dt)
+```
+
+We test the performance of above Decision Tree on the Validation set using the confusion matrix.
+
+```{r}
+predict_dt <- predict(dt, validation, type = "class")
+confusionMatrix(validation$classe, predict_dt)
+```
+
+We see that accuracy of Decision Tree is only **74.44%** and **out of sample error is 25.56%**
+
+## Random Forest Modelling
+
+To improve accuracy, we use **Random Forest** algorithm
+
+```{r}
+rf <- train(classe ~ ., data = train_final, method = "rf", trControl = trainControl(method = "cv", 5), ntree = 100)
+rf
+```
+
+We test the performance of above Random Forest on the Validation set using the confusion matrix.
+
+```{r}
+predict_rf <- predict(rf, validation)
+confusionMatrix(validation$classe, predict_rf)
+```
+
+We see that accuracy has greatly increased to 99.8% and **out of sample error reduced to 0.2%** 
+
+# Prediction Output of Test Data
+
+We use Random Forest model to predict the manner of exercise of the test data set
+
+```{r}
+predict(rf,test_final)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
